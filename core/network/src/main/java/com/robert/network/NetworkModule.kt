@@ -1,13 +1,11 @@
 package com.robert.network
 
-import com.robert.database.dao.CardDao
-import com.robert.database.dao.TransactionDao
-import com.robert.database.dao.UserProfileDao
-import com.robert.database.local.CardLocalDataSource
-import com.robert.database.local.CardLocalDataSourceImpl
 import com.robert.network.api.CardApiService
 import com.robert.network.datasource.CardRemoteDataSource
 import com.robert.network.datasource.CardRemoteDataSourceImpl
+import com.robert.network.interceptor.MalformedCardsPayloadInterceptor
+import com.robert.network.sanitizer.MalformedCardsPayloadSanitizer
+import com.robert.network.sanitizer.MalformedUserProfilePayloadSanitizer
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -34,12 +32,21 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideMalformedCardsInterceptor(
+        sanitizer: MalformedCardsPayloadSanitizer,
+    ): MalformedCardsPayloadInterceptor = MalformedCardsPayloadInterceptor(sanitizer)
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        malformedCardsPayloadInterceptor: MalformedCardsPayloadInterceptor,
+    ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(NetworkConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(NetworkConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(NetworkConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
+        builder.addInterceptor(malformedCardsPayloadInterceptor)
 
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -71,6 +78,9 @@ object NetworkModule {
     @Singleton
     fun provideCardRemoteDataSource(
         api: CardApiService,
-    ): CardRemoteDataSource = CardRemoteDataSourceImpl(api)
+        moshi: Moshi,
+        cardsSanitizer: MalformedCardsPayloadSanitizer,
+        userSanitizer: MalformedUserProfilePayloadSanitizer,
+    ): CardRemoteDataSource = CardRemoteDataSourceImpl(api, moshi, cardsSanitizer, userSanitizer)
 
 }

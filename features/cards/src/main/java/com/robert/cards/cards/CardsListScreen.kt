@@ -74,9 +74,9 @@ fun CardsListScreen(
             }
 
             if (uiState.cards.isNotEmpty()) {
-                Log.d("CardsListScreen", "Displaying ${uiState.cards.size} cards")
                 SuccessState(
-                    cards = uiState.cards
+                    cards = uiState.cards,
+                    onCardClick = onCardClick
                 )
             }
         }
@@ -139,7 +139,10 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-fun SuccessState(cards: List<PaymentCard>) {
+fun SuccessState(
+    cards: List<PaymentCard>,
+    onCardClick: (String) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -159,7 +162,10 @@ fun SuccessState(cards: List<PaymentCard>) {
         }
 
         items(cards, key = { it.id }) { card ->
-            BankCardItem(card = card)
+            BankCardItem(
+                card = card,
+                onClick = { onCardClick(card.id) }
+            )
         }
     }
 }

@@ -1,12 +1,15 @@
 package com.robert.cards.cards
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.robert.domain.common.Result
 import com.robert.domain.models.CardType
 import com.robert.domain.models.PaymentCard
 import com.robert.domain.models.Wallet
+import com.robert.domain.usecase.GetCardTransactionsUseCase
 import com.robert.domain.usecase.GetCardsUseCase
+import com.robert.domain.usecase.GetUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.channels.Channel
@@ -21,9 +24,10 @@ import javax.inject.Inject
 @HiltViewModel
 class CardsListViewModel @Inject constructor(
     private val getCardsUseCase: GetCardsUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase,
 ) : ViewModel() {
 
-    private val _uiState : MutableStateFlow<CardsUIState> = MutableStateFlow(CardsUIState())
+    private val _uiState: MutableStateFlow<CardsUIState> = MutableStateFlow(CardsUIState())
     val uiState: StateFlow<CardsUIState> = _uiState.asStateFlow()
 
     private val _event = Channel<CardsListEvent>()
@@ -42,7 +46,51 @@ class CardsListViewModel @Inject constructor(
 
     init {
         fetchCards()
+        fetchUserData()
     }
+
+    private fun fetchUserData() {
+        viewModelScope.launch(handler) {
+            _uiState.update {
+                it.copy(
+                    isLoading = true
+                )
+            }
+
+            val userDetails = getUserProfileUseCase()
+            when (userDetails) {
+                is Result.Data -> {
+                    Log.d("TAG", "fetchUserData Success: ${userDetails.value}")
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            userProfile = userDetails.value
+                        )
+                    }
+                }
+
+                is Result.Error -> {
+                    Log.d("TAG", "fetchUserData Failure: ${userDetails.message}")
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                        )
+                    }
+                    _event.send(CardsListEvent.Error(userDetails.message ?: "Unknown error"))
+                }
+
+                is Result.Loading -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = true
+                        )
+                    }
+                }
+            }
+        }
+
+    }
+
 
     private fun fetchCards() {
         viewModelScope.launch(handler) {
@@ -61,6 +109,7 @@ class CardsListViewModel @Inject constructor(
                         )
                     }
                 }
+
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(
@@ -69,6 +118,7 @@ class CardsListViewModel @Inject constructor(
                     }
                     _event.send(CardsListEvent.Error(cards.message ?: "Unknown error"))
                 }
+
                 is Result.Loading -> {
                     _uiState.update {
                         it.copy(
@@ -80,66 +130,6 @@ class CardsListViewModel @Inject constructor(
 
         }
     }
-
-
-    val sampleCards = listOf(
-        PaymentCard(
-            id = "card_001",
-            userId = "user_12345",
-            type = CardType.CREDIT,
-            name = "Equity Visa Gold",
-            cardNumber = "4111 1111 1111 1234",
-            holderName = "Robert M. Njuguini",
-            expiryDate = "2028-06",
-            status = "ACTIVE",
-            balance = 15200.75,
-            currentSpend = 3200.50,
-            creditLimit = 50000.00,
-            dueDateIso = "2025-12-05T00:00:00Z",
-            linkedAccountName = "Equity Personal Account",
-            currency = "KES",
-            wallets = listOf(
-                Wallet(
-                    currency = "KES",
-                    flag = "🇰🇪",
-                    balance = 15200.75
-                ),
-                Wallet(
-                    currency = "USD",
-                    flag = "🇺🇸",
-                    balance = 120.50
-                )
-            )
-        ),
-        PaymentCard(
-            id = "card_002",
-            userId = "user_123454",
-            type = CardType.CREDIT,
-            name = "Equity Visa Gold",
-            cardNumber = "4111 1111 1111 1234",
-            holderName = "Robert M. Njuguini",
-            expiryDate = "2028-06",
-            status = "ACTIVE",
-            balance = 15200.75,
-            currentSpend = 3200.50,
-            creditLimit = 50000.00,
-            dueDateIso = "2025-12-05T00:00:00Z",
-            linkedAccountName = "Equity Personal Account",
-            currency = "KES",
-            wallets = listOf(
-                Wallet(
-                    currency = "KES",
-                    flag = "🇰🇪",
-                    balance = 15200.75
-                ),
-                Wallet(
-                    currency = "USD",
-                    flag = "🇺🇸",
-                    balance = 120.50
-                )
-            )
-        )
-    )
 
 
 }

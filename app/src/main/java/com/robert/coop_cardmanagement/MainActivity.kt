@@ -4,17 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.robert.cards.cards.CardsListScreen
+import com.robert.cards.details.CardDetailsScreen
 import com.robert.coop_cardmanagement.navigation.NavRoutes
 import com.robert.coop_cardmanagement.ui.theme.CoopCardManagementTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,7 +28,25 @@ class MainActivity : ComponentActivity() {
                     startDestination = NavRoutes.CARDS
                 ) {
                     composable(NavRoutes.CARDS) {
-                        CardsListScreen(onCardClick = {},)
+                        CardsListScreen(
+                            onCardClick = { cardId ->
+                                navController.navigate(NavRoutes.cardDetails(cardId))
+                            }
+                        )
+                    }
+                    composable(
+                        route = "${NavRoutes.CARD_DETAILS}/{cardId}",
+                        arguments = listOf(
+                            navArgument("cardId") {
+                                type = NavType.StringType
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val cardId = backStackEntry.arguments?.getString("cardId") ?: ""
+                        CardDetailsScreen(
+                            cardId = cardId,
+                            onBackClick = { navController.popBackStack() }
+                        )
                     }
                 }
             }
